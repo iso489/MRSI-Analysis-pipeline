@@ -6,9 +6,8 @@ Official Magnetic Resonance Spectroscopic Imaging (MRSI) analysis pipeline guide
 We aim to **democratize access to multi-voxel MRSI** and support **more standardized clinical integration**.
 
 ## What this is (and isn’t)
-✅ **This repository provides**: a documented, step-by-step pipeline (recommended tools, parameters, and workflow order) for multi-voxel MRSI analysis.
-
-❌ **This repository does not provide**: a one-click automated workflow (no single script that runs everything end-to-end).
+**This repository provides**: a documented, step-by-step pipeline (recommended tools, parameters, and workflow order) for multi-voxel MRSI analysis.
+**This repository does not provide**: a one-click automated workflow (no single script that runs everything end-to-end).
 
 ## Pipeline overview
 This guide describes a reproducible workflow typically including:
@@ -34,14 +33,14 @@ Our workflow is based on open-source tools:
 
 ## Recommended structure for your analysis
 > Tip: Keep your project reproducible by organizing your own analysis folder like this:
-  project/
-  raw/
-  derivatives/
-  anat/
-  mrsi/
-  qc/
-  results/
-  notes/
+  >project/
+  >raw/
+  >derivatives/
+  >anat/
+  >mrsi/
+  >qc/
+  >results/
+  >notes/
 
 ## Citation
 If you use this workflow in academic work, please cite:
