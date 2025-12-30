@@ -55,6 +55,6 @@ project/
 
 ## Citation
 If you use this workflow in academic work, please cite:
-- TODO: paper / DOI / preprint
+- Oultache et al., 2025 [manuscript in preparation]
 
 ## License
