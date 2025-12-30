@@ -26,6 +26,13 @@ Our workflow is based on open-source tools:
 - **FSL-MRS** (MRS preprocessing and fitting)
 - **FID-A** (basis set generation)
 
+## Dependencies
+- Python 3.8+
+- FSL-MRS v2.4.9
+- ANTs v2.6.2
+- HD-BET
+- FID-A (MATLAB)
+
 ## How to use this repository
 - Start here: `docs/` (or `pipeline.md`)  
 - Follow the steps in order and adapt commands/parameters to your data format and scanner protocol.
