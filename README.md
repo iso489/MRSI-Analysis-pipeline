@@ -65,3 +65,5 @@ If you use this workflow in academic work, please cite:
 - Oultache et al., 2025 [manuscript in preparation]
 
 ## License
+This work is free to use (Apache-2.0 license)!
+
