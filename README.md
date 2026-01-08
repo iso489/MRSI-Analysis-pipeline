@@ -33,11 +33,6 @@ Our workflow is based on open-source tools:
 - HD-BET
 - FID-A (MATLAB)
 
-## How to use this repository
-- Start here: `docs/` (or `pipeline.md`)  
-- Follow the steps in order and adapt commands/parameters to your data format and scanner protocol.
-- Use the included examples as templates (configs, command snippets, checklists).
-
 ## Recommended structure for your analysis
 
 Tip: Keep your project reproducible by organizing your own analysis folder like this:
