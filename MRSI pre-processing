@@ -14,5 +14,5 @@ Before applying this step, we recommend visually inspecting the data to confirm 
 Eddy currents arise from rapid gradient switching and can produce short-lived fluctuations in the B0 field. These fluctuations may introduce time-dependent spectral distortions and reduce spectral quality if left uncorrected.  
 This step can be performed using `fsl_mrs_proc ecc` (FSL-MRS toolbox) and typically uses the **unsuppressed water reference** as the correction reference.
 
-3) **Residual water removal**  
+3) **Residual water removal**
 We recommend applying residual water removal to the metabolite data to reduce any remaining water signal that could obscure nearby metabolite peaks or interfere with spectral fitting and quantification.
