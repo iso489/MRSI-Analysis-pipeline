@@ -57,7 +57,7 @@ project/
 
 ## Citation
 If you use this workflow in academic work, please cite the relevant paper:
-- Oultache et al., 2025 [manuscript in preparation]
+- [manuscript in preparation]
 
 ## License
 This work is free to use (Apache-2.0 license)!
