@@ -19,8 +19,7 @@ cat("R version:", R.version.string, "\n")
 cat("GSVA version:", as.character(packageVersion("GSVA")), "\n\n")
 
 # -----------------------------------------------------------------------------
-# Optional: auto-install missing CRAN packages (pheatmap, RColorBrewer)
-# Comment this block out if you prefer manual installs
+# Auto-install missing CRAN packages (pheatmap, RColorBrewer)
 # -----------------------------------------------------------------------------
 cran_needed <- c("pheatmap", "RColorBrewer")
 cran_missing <- cran_needed[!vapply(cran_needed, requireNamespace, logical(1), quietly = TRUE)]
