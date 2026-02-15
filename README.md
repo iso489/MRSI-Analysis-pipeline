@@ -1,6 +1,6 @@
 # MRSI Analysis Pipeline
 
-Official Magnetic Resonance Spectroscopic Imaging (MRSI) analysis pipeline guide from the **Brain Tumor Research Group** at the **[Name of the institution censored for peer-review, will be made available after]**.
+Official Magnetic Resonance Spectroscopic Imaging (MRSI) analysis pipeline guide from the **Brain Tumor Research Group** at the **Montreal Neurological Institute, Montreal, Canada!**.
 
 ## Mission
 We aim to **democratize access to multi-voxel MRSI** and support **its clinical integration**.
