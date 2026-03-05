@@ -1,69 +1,54 @@
 #!/usr/bin/env Rscript
-# =============================================================================
-# Prepare Pathway Gene Sets - OFFLINE VERSION (no internet required)
-# Contains hardcoded KEGG/Reactome gene sets + BRETIGEA-derived neuronal markers
-# =============================================================================
+# Script 00: Prepare Pathway Gene Sets
+# Run once before scripts 02 and 03.
 
 suppressPackageStartupMessages({
   library(data.table)
   library(BRETIGEA)
 })
 
-cat("Preparing pathway gene sets for radiogenomic analysis (offline mode)\n\n")
+USER     <- Sys.getenv("USER")
+BASE_DIR <- file.path("/scratch", USER, "glioma_vs_normal")
+META_DIR <- file.path(BASE_DIR, "metadata")
+dir.create(META_DIR, showWarnings = FALSE, recursive = TRUE)
 
-# -----------------------------------------------------------------------------
-# Configuration
-# -----------------------------------------------------------------------------
-BASE_DIR <- "/scratch/ilyaso/tcga_lgg_open"
-DATA_DIR <- file.path(BASE_DIR, "data_rnaseq_open")
-dir.create(DATA_DIR, showWarnings = FALSE, recursive = TRUE)
+cat("Preparing pathway gene sets\n\n")
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # BRETIGEA neuronal markers (human-only meta-analysis)
-# NOTE:
-#  - In BRETIGEA v1.0.3, markers_df_human_brain uses column "cell" (not "cell_type")
-#  - We use top-N to preserve specificity (recommended: 200)
-#  - Force include NAT8L (NAA synthase)
-#  - Exclude ASPA (oligodendrocyte-enriched; NAA catabolism)
-# -----------------------------------------------------------------------------
+#
+# NAT8L forced in: NAA synthase — the enzyme that produces NAA, the
+#   neuronal MRS marker of interest in this manuscript.
+# ASPA excluded: oligodendrocyte-enriched NAA catabolism enzyme;
+#   its presence would confound the neuronal signature.
+# =============================================================================
 neu_all <- markers_df_human_brain$markers[markers_df_human_brain$cell == "neu"]
 neu_all <- unique(na.omit(neu_all))
 
 make_neu <- function(N) {
   neu <- head(neu_all, N)
-  neu <- unique(c(neu, "NAT8L"))  # force include
-  neu <- setdiff(neu, "ASPA")     # exclude
+  neu <- unique(c(neu, "NAT8L"))  # force include NAA synthase
+  neu <- setdiff(neu, "ASPA")     # remove oligodendrocyte NAA catabolism
   neu
 }
 
-# Choose the primary neuronal signature here
-NEU_PRIMARY_N <- 200
+NEU_PRIMARY_N    <- 200
 NEURONAL_MARKERS <- make_neu(NEU_PRIMARY_N)
-
-# Optional sensitivity sets (kept in the GMT as additional pathways)
-NEURONAL_MARKERS_50  <- make_neu(50)
-NEURONAL_MARKERS_100 <- make_neu(100)
-NEURONAL_MARKERS_300 <- make_neu(300)
-NEURONAL_MARKERS_500 <- make_neu(500)
 
 cat("BRETIGEA neuron markers available (human):", length(neu_all), "\n")
 cat("Primary neuronal signature size:", length(NEURONAL_MARKERS), "\n\n")
 
-# -----------------------------------------------------------------------------
-# Hardcoded gene sets from KEGG and Reactome
-# These are the canonical gene sets for the manuscript hypotheses
-# Gene symbols are human (Homo sapiens)
-# -----------------------------------------------------------------------------
+# =============================================================================
+# Pathway gene sets
+# =============================================================================
 pathways <- list(
 
-  # =========================================================================
-  # 1. MEMBRANE SYNTHESIS AND TURNOVER (Cho-related MRSI signatures)
-  # =========================================================================
-
-  # KEGG Glycerophospholipid metabolism (hsa00564)
+  # ---------------------------------------------------------------------------
+  # 1. MEMBRANE SYNTHESIS AND TURNOVER (Cho MRSI signature)
+  # ---------------------------------------------------------------------------
   KEGG_GLYCEROPHOSPHOLIPID_METABOLISM = c(
     "AGPAT1", "AGPAT2", "AGPAT3", "AGPAT4", "AGPAT5", "AGPAT6", "AGPS",
-    "CDIPT", "CEPT1", "CHAT", "CHKA", "CHKB", "CHPT1", "CKI", "CRLS1",
+    "CDIPT", "CEPT1", "CHAT", "CHKA", "CHKB", "CHPT1", "CRLS1",
     "DGKA", "DGKB", "DGKD", "DGKE", "DGKG", "DGKH", "DGKI", "DGKK", "DGKQ", "DGKZ",
     "ETNK1", "ETNK2", "GPCPD1", "GPLD1", "GNPAT",
     "LCAT", "LPCAT1", "LPCAT2", "LPCAT3", "LPCAT4", "LPIN1", "LPIN2", "LPIN3",
@@ -76,9 +61,9 @@ pathways <- list(
     "PLCE1", "PLCG1", "PLCG2", "PLCH1", "PLCH2", "PLCZ1",
     "PLD1", "PLD2", "PLD3", "PLD4", "PNPLA6", "PNPLA7", "PNPLA8",
     "PTDSS1", "PTDSS2", "TAZ"
+    # NOTE: "CKI" removed — not a valid HGNC symbol; was silently unmapped
   ),
 
-  # Reactome choline metabolism (your offline set)
   REACTOME_CHOLINE_METABOLISM = c(
     "CHKA", "CHKB", "PCYT1A", "PCYT1B", "CHPT1", "CEPT1",
     "PLD1", "PLD2", "PLA2G4A", "LPCAT1", "LPCAT2",
@@ -88,23 +73,18 @@ pathways <- list(
     "GDPD1", "GDPD2", "GDPD3", "GDPD5", "GPCPD1"
   ),
 
-  # =========================================================================
-  # 2. NEURONAL AND AXONAL INTEGRITY (NAA-related MRSI signatures)
-  # =========================================================================
-  # Primary neuronal identity set derived from BRETIGEA (human-only)
-  NEURONAL_MARKERS_BRETIGEA_200 = NEURONAL_MARKERS,
+  # ---------------------------------------------------------------------------
+  # 2. NEURONAL AND AXONAL INTEGRITY (NAA MRSI signature)
+  # ---------------------------------------------------------------------------
+  NEURONAL_MARKERS_BRETIGEA_200 = make_neu(200),
+  NEURONAL_MARKERS_BRETIGEA_50  = make_neu(50),
+  NEURONAL_MARKERS_BRETIGEA_100 = make_neu(100),
+  NEURONAL_MARKERS_BRETIGEA_300 = make_neu(300),
+  NEURONAL_MARKERS_BRETIGEA_500 = make_neu(500),
 
-  # Sensitivity pathways
-  NEURONAL_MARKERS_BRETIGEA_50  = NEURONAL_MARKERS_50,
-  NEURONAL_MARKERS_BRETIGEA_100 = NEURONAL_MARKERS_100,
-  NEURONAL_MARKERS_BRETIGEA_300 = NEURONAL_MARKERS_300,
-  NEURONAL_MARKERS_BRETIGEA_500 = NEURONAL_MARKERS_500,
-
-  # =========================================================================
+  # ---------------------------------------------------------------------------
   # 3. GLUTAMATE-GLUTAMINE CYCLING (Glu/Cr and Gln/Cr MRSI signatures)
-  # =========================================================================
-
-  # KEGG Glutamatergic synapse (hsa04724)
+  # ---------------------------------------------------------------------------
   KEGG_GLUTAMATERGIC_SYNAPSE = c(
     "GRIN1", "GRIN2A", "GRIN2B", "GRIN2C", "GRIN2D", "GRIN3A", "GRIN3B",
     "GRIA1", "GRIA2", "GRIA3", "GRIA4",
@@ -112,9 +92,7 @@ pathways <- list(
     "GRM1", "GRM2", "GRM3", "GRM4", "GRM5", "GRM6", "GRM7", "GRM8",
     "SLC1A1", "SLC1A2", "SLC1A3", "SLC1A6", "SLC1A7",
     "SLC17A7", "SLC17A6", "SLC17A8",
-    "GLUL",
-    "GLS", "GLS2",
-    "GLUD1", "GLUD2",
+    "GLUL", "GLS", "GLS2", "GLUD1", "GLUD2",
     "DLG1", "DLG2", "DLG3", "DLG4",
     "SHANK1", "SHANK2", "SHANK3",
     "HOMER1", "HOMER2", "HOMER3",
@@ -123,32 +101,18 @@ pathways <- list(
     "PLCB1", "PLCB4", "GNAQ", "GNA11"
   ),
 
-  # KEGG Alanine, aspartate and glutamate metabolism (hsa00250)
   KEGG_ALANINE_ASPARTATE_GLUTAMATE_METABOLISM = c(
-    "GOT1", "GOT2",
-    "GPT", "GPT2",
-    "GLS", "GLS2",
-    "GLUL",
-    "GLUD1", "GLUD2",
-    "GAD1", "GAD2",
-    "ASNS",
-    "ASS1",
-    "ASL",
-    "ADSL",
-    "ADSS1", "ADSS2",
-    "ABAT",
-    "ALDH5A1",
-    "CAD",
-    "CPS1",
-    "AGXT", "AGXT2",
-    "DDO", "DAO"
+    "GOT1", "GOT2", "GPT", "GPT2",
+    "GLS", "GLS2", "GLUL", "GLUD1", "GLUD2",
+    "GAD1", "GAD2", "ASNS", "ASS1", "ASL",
+    "ADSL", "ADSS1", "ADSS2",
+    "ABAT", "ALDH5A1", "CAD", "CPS1",
+    "AGXT", "AGXT2", "DDO", "DAO"
   ),
 
-  # =========================================================================
-  # 4. REDOX AND MITOCHONDRIAL METABOLISM (IDH biological context)
-  # =========================================================================
-
-  # KEGG Oxidative phosphorylation (hsa00190)
+  # ---------------------------------------------------------------------------
+  # 4. REDOX AND MITOCHONDRIAL METABOLISM
+  # ---------------------------------------------------------------------------
   KEGG_OXIDATIVE_PHOSPHORYLATION = c(
     "NDUFA1", "NDUFA2", "NDUFA3", "NDUFA4", "NDUFA5", "NDUFA6", "NDUFA7",
     "NDUFA8", "NDUFA9", "NDUFA10", "NDUFA11", "NDUFA12", "NDUFA13",
@@ -168,64 +132,42 @@ pathways <- list(
     "ATP5F1A", "ATP5F1B", "ATP5F1C", "ATP5F1D", "ATP5F1E",
     "ATP5PB", "ATP5MC1", "ATP5MC2", "ATP5MC3", "ATP5PD", "ATP5ME",
     "ATP5MF", "ATP5MG", "ATP5PF", "ATP5PO", "ATP5IF1",
-    "MT-ATP6", "MT-ATP8",
-    "CYCS"
+    "MT-ATP6", "MT-ATP8", "CYCS"
   ),
 
-  # KEGG Citrate cycle / TCA cycle (hsa00020)
   KEGG_CITRATE_CYCLE_TCA_CYCLE = c(
-    "PC",
-    "PDHA1", "PDHA2", "PDHB",
-    "DLAT", "DLD",
-    "PDK1", "PDK2", "PDK3", "PDK4",
-    "PDP1", "PDP2",
-    "CS",
-    "ACO1", "ACO2",
+    "PC", "PDHA1", "PDHA2", "PDHB", "DLAT", "DLD",
+    "PDK1", "PDK2", "PDK3", "PDK4", "PDP1", "PDP2",
+    "CS", "ACO1", "ACO2",
     "IDH1", "IDH2", "IDH3A", "IDH3B", "IDH3G",
-    "OGDH", "OGDHL",
-    "DLST",
+    "OGDH", "OGDHL", "DLST",
     "SUCLG1", "SUCLG2", "SUCLA2",
     "SDHA", "SDHB", "SDHC", "SDHD",
-    "FH",
-    "MDH1", "MDH2",
-    "PCK1", "PCK2",
-    "ME1", "ME2", "ME3",
-    "ACLY"
+    "FH", "MDH1", "MDH2", "PCK1", "PCK2",
+    "ME1", "ME2", "ME3", "ACLY"
   )
 )
 
-# -----------------------------------------------------------------------------
-# Validate and deduplicate gene sets
-# -----------------------------------------------------------------------------
-cat("Validating gene sets:\n")
-for (nm in names(pathways)) {
-  pathways[[nm]] <- unique(pathways[[nm]])
-  cat(sprintf("  %s: %d genes\n", nm, length(pathways[[nm]])))
-}
+# Deduplicate each set
+pathways <- lapply(pathways, unique)
 
-# -----------------------------------------------------------------------------
-# Write GMT file
-# GMT format: pathway_name <TAB> description <TAB> gene1 <TAB> gene2 <TAB> ...
-# -----------------------------------------------------------------------------
-gmt_file <- file.path(DATA_DIR, "pathways.gmt")
-cat("\nWriting GMT file:", gmt_file, "\n")
+cat("Gene set sizes:\n")
+for (nm in names(pathways))
+  cat(sprintf("  %-50s %d genes\n", nm, length(pathways[[nm]])))
 
+# Write GMT
+gmt_file <- file.path(META_DIR, "pathways.gmt")
 con <- file(gmt_file, "w")
-for (pathway_name in names(pathways)) {
-  genes <- pathways[[pathway_name]]
-  line <- paste(c(pathway_name, pathway_name, genes), collapse = "\t")
-  writeLines(line, con)
-}
+for (nm in names(pathways))
+  writeLines(paste(c(nm, nm, pathways[[nm]]), collapse = "\t"), con)
 close(con)
-
-cat("GMT file created successfully!\n")
+cat(sprintf("\nGMT written: %s\n", gmt_file))
 
 # Verify
-cat("\nVerifying GMT file:\n")
-gmt_lines <- readLines(gmt_file)
-for (line in gmt_lines) {
+cat("\nVerification:\n")
+for (line in readLines(gmt_file)) {
   parts <- strsplit(line, "\t")[[1]]
-  cat(sprintf("  %s: %d genes\n", parts[1], length(parts) - 2))
+  cat(sprintf("  %s: %d genes\n", parts[1], length(parts) - 2L))
 }
 
-cat("\n=== Pathway preparation complete ===\n")
+cat("\n=== Script 00 complete ===\n")
