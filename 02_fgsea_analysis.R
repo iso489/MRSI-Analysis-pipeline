@@ -1,40 +1,179 @@
-#!/usr/bin/env Rscript
-# =============================================================================
-# fgsea Gene Set Enrichment Analysis - Fixed for Ensembl ID conversion
-# Pre-ranked GSEA against pre-specified metabolic pathways
-# =============================================================================
+!/usr/bin/env Rscript
+# Script 02: fgsea — Pre-ranked GSEA, glioma vs healthy normal brain
+#
+# INPUTS  (from script 01 and 00)
+#   BASE_DIR/results/glioma_vs_normal_ranked_genes.rds  — named vector of
+#     DESeq2 Wald statistics, ENSG IDs as names, sorted descending
+#     stat > 0 = higher in glioma; stat < 0 = lower in glioma (higher in normal)
+#   BASE_DIR/metadata/ensg_to_symbol.rds  — ENSG → HGNC symbol map
+#   BASE_DIR/metadata/pathways.gmt        — from script 00
 
 suppressPackageStartupMessages({
   library(fgsea)
   library(data.table)
   library(ggplot2)
-  library(org.Hs.eg.db)
-  library(AnnotationDbi)
 })
 
-cat("R version:", R.version.string, "\n")
 cat("fgsea version:", as.character(packageVersion("fgsea")), "\n\n")
 
-# -----------------------------------------------------------------------------
-# Configuration
-# -----------------------------------------------------------------------------
-BASE_DIR    <- "/scratch/ilyaso/tcga_lgg_open"
-DATA_DIR    <- file.path(BASE_DIR, "data_rnaseq_open")
-RESULTS_DIR <- file.path(BASE_DIR, "results")
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+USER     <- Sys.getenv("USER")
+BASE_DIR <- file.path("/scratch", USER, "glioma_vs_normal")
+RES_DIR  <- file.path(BASE_DIR, "results")
+META_DIR <- file.path(BASE_DIR, "metadata")
 
-RANKS_FILE <- file.path(DATA_DIR, "ranks.tsv")
-GMT_FILE   <- file.path(DATA_DIR, "pathways.gmt")
-OUTPUT_FILE <- file.path(RESULTS_DIR, "fgsea_results.tsv")
+RANKED_FILE <- file.path(RES_DIR,  "glioma_vs_normal_ranked_genes.rds")
+ENSG_MAP    <- file.path(META_DIR, "ensg_to_symbol.rds")
+GMT_FILE    <- file.path(META_DIR, "pathways.gmt")
+OUTPUT_FILE <- file.path(RES_DIR,  "fgsea_results.tsv")
 
-dir.create(RESULTS_DIR, showWarnings = FALSE, recursive = TRUE)
+for (f in c(RANKED_FILE, ENSG_MAP, GMT_FILE))
+  if (!file.exists(f)) stop(sprintf("Required file not found: %s", f))
 
-cat("Input ranks:", RANKS_FILE, "\n")
-cat("Input GMT  :", GMT_FILE, "\n")
-cat("Output file:", OUTPUT_FILE, "\n\n")
+# =============================================================================
+# STEP 1: Load ranked gene list and convert ENSG → symbol
+#
+# Script 01 saves a named numeric vector (names = ENSG IDs, values = Wald stat).
+# We convert to symbols here using the SAME map script 01 built, guaranteeing
+# the symbols are consistent with the pathway gene sets in the GMT file.
+# =============================================================================
+cat("--- Step 1: Loading ranked genes ---\n")
 
-# -----------------------------------------------------------------------------
-# Step 1: Load ranked gene list
-# -----------------------------------------------------------------------------
+ranked_ensg <- readRDS(RANKED_FILE)
+cat(sprintf("  Loaded: %d ranked genes\n", length(ranked_ensg)))
+cat(sprintf("  Stat range: [%.3f, %.3f]\n", min(ranked_ensg), max(ranked_ensg)))
+
+ensg_map <- readRDS(ENSG_MAP)
+cat(sprintf("  ENSG map: %d entries\n", nrow(ensg_map)))
+
+# Map ENSG → symbol
+id_vec    <- setNames(ensg_map$symbol, ensg_map$gene_id)
+symbols   <- id_vec[names(ranked_ensg)]
+mapped    <- !is.na(symbols)
+cat(sprintf("  Genes with symbol: %d / %d\n", sum(mapped), length(ranked_ensg)))
+
+ranked_sym <- ranked_ensg[mapped]
+names(ranked_sym) <- symbols[mapped]
+
+# If multiple ENSG IDs map to same symbol, keep the one with highest |stat|
+dt <- data.table(symbol = names(ranked_sym), stat = ranked_sym)
+dt <- dt[order(-abs(stat))]
+dt <- dt[!duplicated(symbol)]
+ranked <- setNames(dt$stat, dt$symbol)
+ranked <- sort(ranked, decreasing = TRUE)
+
+cat(sprintf("  Unique symbols after dedup: %d\n\n", length(ranked)))
+cat("  Top 5 (upregulated in glioma):\n")
+print(head(ranked, 5))
+cat("  Bottom 5 (downregulated in glioma / higher in normal brain):\n")
+print(tail(ranked, 5))
+
+# =============================================================================
+# STEP 2: Load pathways
+# =============================================================================
+cat("\n--- Step 2: Loading pathways ---\n")
+
+pathways <- gmtPathways(GMT_FILE)
+cat(sprintf("  Loaded %d pathways:\n", length(pathways)))
+
+for (nm in names(pathways)) {
+  n_total <- length(pathways[[nm]])
+  n_in    <- sum(pathways[[nm]] %in% names(ranked))
+  cat(sprintf("    %-50s %d genes (%d in data)\n", nm, n_total, n_in))
+}
+
+if (sum(sapply(pathways, function(p) sum(p %in% names(ranked)))) == 0L)
+  stop("No overlap between pathway genes and ranked list — check symbol mapping.")
+
+# =============================================================================
+# STEP 3: Run fgsea
+# =============================================================================
+cat("\n--- Step 3: Running fgsea (10,000 permutations) ---\n")
+
+set.seed(42)
+fgsea_res <- fgsea(
+  pathways    = pathways,
+  stats       = ranked,
+  minSize     = 5,
+  maxSize     = 500,
+  nPermSimple = 10000
+)
+fgsea_res <- fgsea_res[order(pval)]
+
+cat("\n  Results:\n")
+print(fgsea_res[, .(pathway, pval, padj, NES, size)])
+
+# =============================================================================
+# STEP 4: Interpret results
+# =============================================================================
+cat("\n--- Step 4: Interpretation ---\n")
+cat("  NES > 0 = upregulated in glioma vs normal brain\n")
+cat("  NES < 0 = downregulated in glioma (higher in normal brain)\n\n")
+
+for (i in seq_len(nrow(fgsea_res))) {
+  pw   <- fgsea_res$pathway[i]
+  nes  <- fgsea_res$NES[i]
+  q    <- fgsea_res$padj[i]
+  sz   <- fgsea_res$size[i]
+  dir  <- ifelse(nes > 0, "UPREGULATED in glioma", "DOWNREGULATED in glioma")
+  sig  <- ifelse(q < 0.05, "SIGNIFICANT", "not significant")
+  cat(sprintf("%s:\n  NES = %.3f (%s)\n  FDR q = %.4f (%s)\n  Genes: %d\n\n",
+              pw, nes, dir, q, sig, sz))
+}
+
+# =============================================================================
+# STEP 5: Save results
+# =============================================================================
+cat("--- Step 5: Saving results ---\n")
+
+fgsea_out <- copy(fgsea_res)
+fgsea_out[, leadingEdge := sapply(leadingEdge, paste, collapse = ",")]
+fwrite(fgsea_out, OUTPUT_FILE, sep = "\t")
+cat(sprintf("  Saved: %s\n", basename(OUTPUT_FILE)))
+
+# =============================================================================
+# STEP 6: Plots
+# =============================================================================
+cat("\n--- Step 6: Generating plots ---\n")
+
+# Per-pathway enrichment plots
+for (pw in names(pathways)) {
+  row <- fgsea_res[pathway == pw]
+  if (nrow(row) == 0L || row$size < 5L) next
+  pdf_file <- file.path(RES_DIR, sprintf("enrichment_%s.pdf", pw))
+  p <- plotEnrichment(pathways[[pw]], ranked) +
+    labs(title = pw,
+         subtitle = sprintf("NES = %.2f  |  FDR q = %.4f  |  n = %d genes",
+                            row$NES, row$padj, row$size)) +
+    theme_minimal()
+  ggsave(pdf_file, p, width = 8, height = 5)
+  cat(sprintf("  Saved: %s\n", basename(pdf_file)))
+}
+
+# Summary bar plot
+if (nrow(fgsea_res) > 0L) {
+  p_sum <- ggplot(fgsea_res,
+                  aes(x = reorder(pathway, NES), y = NES,
+                      fill = padj < 0.05)) +
+    geom_col() +
+    coord_flip() +
+    scale_fill_manual(values = c("grey60", "firebrick"),
+                      labels = c("FDR \u2265 0.05", "FDR < 0.05"),
+                      name   = "Significance") +
+    labs(title    = "Pathway Enrichment: Glioma vs Normal Brain",
+         subtitle = "NES > 0 = upregulated in glioma",
+         x = NULL, y = "Normalized Enrichment Score (NES)") +
+    theme_minimal() +
+    theme(axis.text.y = element_text(size = 8))
+  ggsave(file.path(RES_DIR, "fgsea_summary.pdf"), p_sum,
+         width = 10, height = 6)
+  cat("  Saved: fgsea_summary.pdf\n")
+}
+
+cat("\n=== Script 02 complete ===\n")
+cat(sprintf("Results: %s\n", RES_DIR))# -----------------------------------------------------------------------------
 cat("=== Loading ranked genes ===\n")
 
 if (!file.exists(RANKS_FILE)) {
