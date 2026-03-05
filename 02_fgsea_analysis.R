@@ -1,4 +1,4 @@
-!/usr/bin/env Rscript
+#!/usr/bin/env Rscript
 # Script 02: fgsea — Pre-ranked GSEA, glioma vs healthy normal brain
 #
 # INPUTS  (from script 01 and 00)
