@@ -55,6 +55,28 @@ project/
     └── Results/
 ```
 
+## Transcriptomic analysis
+
+`Transcriptomic_Analysis/` holds the R scripts behind the radiogenomic context
+analysis (TCGA glioma versus GTEx normal cortex, UCSC Xena Toil recompute hub):
+
+| script | what it does |
+|---|---|
+| `00-Prepare_Pathways.R` | builds the 11 prespecified gene sets (five BRETIGEA neuronal-marker tiers plus six KEGG/Reactome metabolic pathways) into `pathways.gmt` |
+| `01_deseq2_analysis.R` | gene filtering, protein-coding restriction (Ensembl release 100) and DESeq2 `~ condition` differential expression |
+| `02_fgsea_analysis.R` | pre-ranked GSEA on the DESeq2 Wald statistic (`fgseaMultilevel`, `nPermSimple = 10000`) |
+| `03_gsva_analysis.R` | per-sample pathway activity (GSVA, Gaussian kernel on variance-stabilized counts) |
+| `04_negative_control_gsea.R` | calibrates each prespecified set against 500 size-matched random gene sets drawn from the same ranked universe |
+
+Script 04 exists because 92% of tested protein-coding genes are differentially
+expressed between bulk glioma and normal cortex. With a genome-wide shift that
+large, any gene set can look enriched, so the calibration tests that objection
+empirically rather than arguing about it. It is the analysis the manuscript
+relies on when it states which pathway results are interpretable.
+
+`RNA_seq_analysis_script.sbatch` is the Slurm job used to run the pipeline on
+the Digital Research Alliance of Canada infrastructure.
+
 ## Citation
 If you use this workflow in academic work, please cite the relevant paper:
 - [manuscript in preparation]
