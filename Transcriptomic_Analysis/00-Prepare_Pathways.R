@@ -17,19 +17,25 @@ cat("Preparing pathway gene sets\n\n")
 # =============================================================================
 # BRETIGEA neuronal markers (human-only meta-analysis)
 #
-# NAT8L forced in: NAA synthase — the enzyme that produces NAA, the
-#   neuronal MRS marker of interest in this manuscript.
-# ASPA excluded: oligodendrocyte-enriched NAA catabolism enzyme;
-#   its presence would confound the neuronal signature.
+# The published BRETIGEA human neuronal-marker ranking (McKenzie et al. 2018;
+# BRETIGEA markers_df_human_brain, cell == "neu") is used UNCHANGED at five
+# stringency tiers (the first 50/100/200/300/500 markers of the ranking).
+# NAT8L (NAA synthase) is NOT a BRETIGEA neuronal marker and is NOT added to
+# the signatures; it is analyzed as a separate single-gene readout in script
+# 01. No gene is removed from the signatures (ASPA is not a member of the
+# BRETIGEA neuronal ranking, so no exclusion is needed or applied).
+#
+# History: an earlier version of this script force-added NAT8L to each tier
+# and applied a no-op ASPA exclusion. The reported analyses use the unchanged
+# signatures defined here; the frozen gene lists are committed alongside this
+# script as pathways.gmt.
 # =============================================================================
 neu_all <- markers_df_human_brain$markers[markers_df_human_brain$cell == "neu"]
 neu_all <- unique(na.omit(neu_all))
+stopifnot(length(neu_all) == 1000L, !("NAT8L" %in% neu_all), !("ASPA" %in% neu_all))
 
 make_neu <- function(N) {
-  neu <- head(neu_all, N)
-  neu <- unique(c(neu, "NAT8L"))  # force include NAA synthase
-  neu <- setdiff(neu, "ASPA")     # remove oligodendrocyte NAA catabolism
-  neu
+  head(neu_all, N)  # published ranking, used unchanged
 }
 
 NEU_PRIMARY_N    <- 200

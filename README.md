@@ -62,7 +62,7 @@ analysis (TCGA glioma versus GTEx normal cortex, UCSC Xena Toil recompute hub):
 
 | script | what it does |
 |---|---|
-| `00-Prepare_Pathways.R` | builds the 11 prespecified gene sets (five BRETIGEA neuronal-marker tiers plus six KEGG/Reactome metabolic pathways) into `pathways.gmt` |
+| `00-Prepare_Pathways.R` | builds the 11 prespecified gene sets (five BRETIGEA neuronal-marker tiers, used unchanged from the published ranking, plus six KEGG/Reactome-based curated metabolic pathways) into `pathways.gmt`; the frozen gene lists used for the reported analyses are committed as `Transcriptomic_Analysis/pathways.gmt` |
 | `01_deseq2_analysis.R` | gene filtering, protein-coding restriction (Ensembl release 100) and DESeq2 `~ condition` differential expression |
 | `02_fgsea_analysis.R` | pre-ranked GSEA on the DESeq2 Wald statistic (`fgseaMultilevel`, `nPermSimple = 10000`) |
 | `03_gsva_analysis.R` | per-sample pathway activity (GSVA, Gaussian kernel on variance-stabilized counts) |
