@@ -61,6 +61,15 @@ if [ $? -ne 0 ]; then echo "ERROR in script 02"; exit 1; fi
 echo ""
 echo "--- Script 03: GSVA ---"
 Rscript "${SCRIPTS}/03_gsva_analysis.R"
+
+echo "=== 04: size-matched random gene-set calibration ==="
+Rscript "${SCRIPTS}/04_negative_control_gsea.R"
+
+echo "=== 05: donor-level reanalysis (PRIMARY inference) ==="
+Rscript "${SCRIPTS}/05_donor_level_transcriptomics.R"
+
+echo "=== 06: verify against the expected-results bundle ==="
+Rscript "${SCRIPTS}/verify_reproduction.R"
 if [ $? -ne 0 ]; then echo "ERROR in script 03"; exit 1; fi
 
 echo ""
