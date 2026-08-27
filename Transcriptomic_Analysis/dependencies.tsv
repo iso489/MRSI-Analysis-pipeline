@@ -1,0 +1,9 @@
+R	4.6.1
+DESeq2	1.52.0
+fgsea	1.38.0
+GSVA	2.6.6
+data.table	1.18.4
+BiocParallel	1.46.0
+SummarizedExperiment	1.42.0
+BRETIGEA	1.0.3
+matrixStats	1.5.0
